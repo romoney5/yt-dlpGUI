@@ -1,13 +1,14 @@
 import logging
 import random
 import threading
+import time
 import traceback
 
 import yt_dlp.utils
 from kivy import Config, app
 from kivy.animation import Animation
 from kivy.app import App
-from kivy.clock import mainthread
+from kivy.clock import mainthread, Clock
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -16,6 +17,7 @@ from kivy.uix.label import Label
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.textinput import TextInput
+from kivy.uix.widget import Widget
 from yt_dlp import YoutubeDL
 Window.clearcolor = (0.05, 0.05, 0.07, 1)
 Window.size = (900,600)
@@ -24,12 +26,27 @@ class ytdlpgui(App):
     def build(self):
         layout = FloatLayout()
 
+        # Navigation Bar
+        nav_bar = FloatLayout()
+        nav_button1 = Button(text='Home', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05))
+        nav_button2 = Button(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05))
+        nav_bar.add_widget(nav_button1)
+        nav_bar.add_widget(nav_button2)
+        # nav_bar.add_widget(Widget())
+        layout.add_widget(nav_bar)
+
         self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05))
         download_button = Button(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
         self.progress_bar = ProgressBar(max=100, value=0, pos=(10, 0), size_hint=(1, .05))
-        self.consolelog = TextInput(text=YoutubeDL.__doc__, size_hint=(.8, .8),pos_hint={'right': .98, 'top': .98})
-        help(YoutubeDL)
+        self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92})
+        # time.sleep(0.1)
+        self.consolelog.text = open("help.txt", "r").read()
+        self.consolelog.cursor = (0,0)
+        Clock.schedule_once(lambda dt: setattr(self.consolelog, 'cursor', (0, 0)),.5)
+        # print("It happens")
+        # help(YoutubeDL)
         # self.setup_logger()
+
         layout.add_widget(self.url_input)
         layout.add_widget(download_button)
         layout.add_widget(self.progress_bar)
@@ -50,6 +67,9 @@ class ytdlpgui(App):
         Animation(value=0,duration=.3).start(self.progress_bar)
         text_input = self.url_input # Access the TextInput widget by its ID
         url = text_input.text
+        if (url==''):
+            self.addtolog('Don\'t try fooling me like that. At least provide a URL!')
+            return None
         print("Now downloading ", url)
         self.consolelog.text=''
         def dlthread():
