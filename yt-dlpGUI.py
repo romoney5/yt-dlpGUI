@@ -10,6 +10,7 @@ from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import mainthread, Clock
 from kivy.core.window import Window
+from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -39,8 +40,10 @@ class ytdlpgui(App):
         download_button = Button(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
         self.progress_bar = ProgressBar(max=100, value=0, pos=(10, 0), size_hint=(1, .05))
         self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92})
+        self.prlabel = Label(size_hint=(.4, .08), pos_hint={'right': .82, 'top': .12},text="0% complete",halign='left',font_size=34-6)
+        self.prlabel.bind(size=self.prlabel.setter('text_size'))
         # time.sleep(0.1)
-        self.consolelog.text = open("help.txt", "r").read()
+        self.consolelog.text = open("help.txt", "r").read()+"\n"
         self.consolelog.cursor = (0,0)
         Clock.schedule_once(lambda dt: setattr(self.consolelog, 'cursor', (0, 0)),.5)
         # print("It happens")
@@ -51,6 +54,7 @@ class ytdlpgui(App):
         layout.add_widget(download_button)
         layout.add_widget(self.progress_bar)
         layout.add_widget(self.consolelog)
+        layout.add_widget(self.prlabel)
 
         return layout
     # def setup_logger(self):
@@ -64,7 +68,7 @@ class ytdlpgui(App):
     #     sm.add_widget(SecondScreen(name='second'))
     #     return sm
     def download(self,instance=None):
-        Animation(value=0,duration=.3).start(self.progress_bar)
+        Animation(value=0,duration=.36).start(self.progress_bar)
         text_input = self.url_input # Access the TextInput widget by its ID
         url = text_input.text
         if (url==''):
@@ -89,7 +93,7 @@ class ytdlpgui(App):
                         return False
                 except Exception as e:
                     print("Invalid URL ", url)
-                    self.addtolog(f"An error occured while downloading {url}, lemme show you:\n{traceback.format_exc()}")
+                    self.addtolog(f"Ugh you got me!! lemme show you:\n{traceback.format_exc()}")
                     return False
         threading.Thread(target=dlthread).start()
 
@@ -100,7 +104,8 @@ class ytdlpgui(App):
         if d['status'] == 'downloading':
             # progress_text = f"Downloading {d['filename']}: {d['_percent_str']} complete\n"
             # self.addtolog(progress_text)
-            Animation(value=int(round(float(d['_percent_str'].rstrip("%")))),duration=.3).start(self.progress_bar)
+            Animation(value=int(round(float(d['_percent_str'].rstrip("%")))),duration=.36).start(self.progress_bar)
+            self.prlabel.text = d['percent_str']+" complete"
         elif d['status'] == 'finished':
             completed_text = f"The download of \"{d['filename']}\" has been completed\n"
             self.addtolog(completed_text)
@@ -130,6 +135,7 @@ class ytdlpgui(App):
         def error(self, msg):
             self.label.text += f"{msg}\n"
             print("For the bois that are looking at the log: "+msg)
+            Clock.schedule_once(lambda dt: setattr(self.label, 'cursor', (0, 0)),.2)
     @mainthread
     def addtolog(self,msg):
         self.consolelog.text += f"{msg}\n"
