@@ -10,16 +10,16 @@ from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import mainthread, Clock
 from kivy.core.window import Window
-from kivy.graphics import Color, Rectangle
-from kivy.uix.boxlayout import BoxLayout
+# from kivy.graphics import Color, Rectangle
+# from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.progressbar import ProgressBar
-from kivy.uix.screenmanager import Screen, ScreenManager
+# from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.textinput import TextInput
-from kivy.uix.widget import Widget
-from yt_dlp import YoutubeDL
+# from kivy.uix.widget import Widget
+# from yt_dlp import YoutubeDL
 Window.clearcolor = (0.05, 0.05, 0.07, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
@@ -93,7 +93,7 @@ class ytdlpgui(App):
                         return False
                 except Exception as e:
                     print("Invalid URL ", url)
-                    self.addtolog(f"Ugh you got me!! lemme show you:\n{traceback.format_exc()}")
+                    self.addtolog(f"Ugh, you got me!! lemme show you:\n{traceback.format_exc()}")
                     return False
         threading.Thread(target=dlthread).start()
 
@@ -105,7 +105,7 @@ class ytdlpgui(App):
             # progress_text = f"Downloading {d['filename']}: {d['_percent_str']} complete\n"
             # self.addtolog(progress_text)
             Animation(value=int(round(float(d['_percent_str'].rstrip("%")))),duration=.36).start(self.progress_bar)
-            self.prlabel.text = d['percent_str']+" complete"
+            self.prlabel.text = d['_percent_str']+" complete"
         elif d['status'] == 'finished':
             completed_text = f"The download of \"{d['filename']}\" has been completed\n"
             self.addtolog(completed_text)
