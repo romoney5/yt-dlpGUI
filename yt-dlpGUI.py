@@ -30,7 +30,7 @@ Window.clearcolor = (0.05, 0.05, 0.07, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
 class ytdlpgui(App):
-    def update_please(self):
+    def update_please(self,instance):
         # Download the file from the URL
         response = requests.get("https://github.com/romoney5/yt-dlpGUI/raw/master/yt-dlpGUI.py")
         if response.status_code == 200:
