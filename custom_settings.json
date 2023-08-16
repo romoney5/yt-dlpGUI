@@ -1,0 +1,20 @@
+[
+  {
+    "type": "title",
+    "title": "General Settings"
+  },
+  {
+    "type": "bool",
+    "title": "Embed Thumbnail",
+    "desc": "Embeds... the thumbnail",
+    "section": "general",
+    "key": "embed_thmb"
+  },
+  {
+    "type": "numeric",
+    "title": "Age",
+    "desc": "Enter your age",
+    "section": "general",
+    "key": "age"
+  }
+]

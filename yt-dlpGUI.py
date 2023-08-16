@@ -9,13 +9,17 @@ from kivy import Config, app
 from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import mainthread, Clock
+from kivy.config import ConfigParser
 from kivy.core.window import Window
+from kivy.lang import Builder
 # from kivy.graphics import Color, Rectangle
 # from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.uix.progressbar import ProgressBar
+from kivy.uix.settings import SettingsWithSpinner, Settings, SettingsWithSidebar
 # from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.textinput import TextInput
 # from kivy.uix.widget import Widget
@@ -25,20 +29,19 @@ Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
 class ytdlpgui(App):
     def build(self):
-        layout = FloatLayout()
-
+        self.layout = FloatLayout()
         # Navigation Bar
         nav_bar = FloatLayout()
-        nav_button1 = Button(text='Home', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05))
-        nav_button2 = Button(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05))
+        nav_button1 = Button(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05))
+        nav_button2 = Button(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05),on_release=self.open_settings)
         nav_bar.add_widget(nav_button1)
         nav_bar.add_widget(nav_button2)
         # nav_bar.add_widget(Widget())
-        layout.add_widget(nav_bar)
+        self.layout.add_widget(nav_bar)
 
         self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05))
         download_button = Button(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
-        self.progress_bar = ProgressBar(max=100, value=0, pos=(10, 0), size_hint=(1, .05))
+        self.progress_bar = ProgressBar(max=100, value=0, pos=(10, 0), size_hint=(.975, .05))
         self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92})
         self.prlabel = Label(size_hint=(.4, .08), pos_hint={'right': .82, 'top': .12},text="0% complete",halign='left',font_size=34-6)
         self.prlabel.bind(size=self.prlabel.setter('text_size'))
@@ -50,13 +53,16 @@ class ytdlpgui(App):
         # help(YoutubeDL)
         # self.setup_logger()
 
-        layout.add_widget(self.url_input)
-        layout.add_widget(download_button)
-        layout.add_widget(self.progress_bar)
-        layout.add_widget(self.consolelog)
-        layout.add_widget(self.prlabel)
-
-        return layout
+        self.layout.add_widget(self.url_input)
+        self.layout.add_widget(download_button)
+        self.layout.add_widget(self.progress_bar)
+        self.layout.add_widget(self.consolelog)
+        self.layout.add_widget(self.prlabel)
+        return self.layout
+    def open_settings(self, instance):
+        settings_panel = CustomSettings()  # Create an instance of your custom settings panel
+        settings_panel.bind(on_close=lambda dt: self.layout.remove_widget(settings_panel))
+        self.layout.add_widget(settings_panel)
     # def setup_logger(self):
     #     log_handler = self.LogHandler(self.consolelog)
     #     ydl_logger = logging.getLogger('yt_dlp')
@@ -139,6 +145,13 @@ class ytdlpgui(App):
     @mainthread
     def addtolog(self,msg):
         self.consolelog.text += f"{msg}\n"
+class CustomSettings(SettingsWithSidebar):
+    def __init__(self, **kwargs):
+        super(CustomSettings, self).__init__(**kwargs)
+        self.config = ConfigParser()
+        self.config.setdefaults('general', {
+            'embed_thmb':False,'age':0})
+        self.add_json_panel('General', self.config, 'custom_settings.json')
 # class MainScreen(Screen):
 #     pass
 # class SecondScreen(Screen):
