@@ -76,7 +76,7 @@ class ytdlpgui(App):
         return self.layout
     def open_settings(self, instance):
         settings_panel = CustomSettings()  # Create an instance of your custom settings panel
-        # settings_panel.bind(on_close=lambda dt: self.layout.remove_widget(settings_panel)) Yes I will uncomment this soon!
+        # settings_panel.bind(on_close=lambda dt: self.layout.remove_widget(settings_panel)) Yes I will uncomment this soon!!
         self.layout.add_widget(settings_panel)
     # def setup_logger(self):
     #     log_handler = self.LogHandler(self.consolelog)
