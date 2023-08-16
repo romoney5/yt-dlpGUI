@@ -3,7 +3,9 @@ import random
 import threading
 import time
 import traceback
+import os
 
+import requests
 import yt_dlp.utils
 from kivy import Config, app
 from kivy.animation import Animation
@@ -28,11 +30,24 @@ Window.clearcolor = (0.05, 0.05, 0.07, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
 class ytdlpgui(App):
+    def update_please(self):
+        # Download the file from the URL
+        response = requests.get("https://github.com/romoney5/yt-dlpGUI/raw/master/yt-dlpGUI.py")
+        if response.status_code == 200:
+            with open("yt-dlpGUI.py", 'wb') as file:
+                file.write(response.content)
+            print(f"Downloaded a yt-dlpGUI update successfully")
+
+            # Close the current script
+            app.stopTouchApp()
+        else:
+            print("Failed to download the file")
+
     def build(self):
         self.layout = FloatLayout()
         # Navigation Bar
         nav_bar = FloatLayout()
-        nav_button1 = Button(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05))
+        nav_button1 = Button(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05),on_release=self.update_please)
         nav_button2 = Button(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05),on_release=self.open_settings)
         nav_bar.add_widget(nav_button1)
         nav_bar.add_widget(nav_button2)
@@ -61,7 +76,7 @@ class ytdlpgui(App):
         return self.layout
     def open_settings(self, instance):
         settings_panel = CustomSettings()  # Create an instance of your custom settings panel
-        settings_panel.bind(on_close=lambda dt: self.layout.remove_widget(settings_panel))
+        # settings_panel.bind(on_close=lambda dt: self.layout.remove_widget(settings_panel)) Yes I will uncomment this soon!
         self.layout.add_widget(settings_panel)
     # def setup_logger(self):
     #     log_handler = self.LogHandler(self.consolelog)
