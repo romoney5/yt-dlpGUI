@@ -1,20 +1,31 @@
 [
   {
-    "type": "title",
-    "title": "General Settings"
-  },
-  {
     "type": "bool",
     "title": "Embed Thumbnail",
-    "desc": "Embeds... the thumbnail",
+    "desc": "Adds the thumbnail. Note this may force the video to be in .mkv",
     "section": "general",
     "key": "embed_thmb"
   },
   {
-    "type": "numeric",
-    "title": "Age",
-    "desc": "Enter your age",
+    "type": "bool",
+    "title": "Embed Subtitles",
+    "desc": "Embeds subtitles into the video",
     "section": "general",
-    "key": "age"
+    "key": "subtitle"
+  },
+  {
+    "type": "bool",
+    "title": "Use FFmpeg",
+    "desc": "Enables use of FFmpeg and FFprobe in yt-dlp. Download \"ffm\" to get the required binaries",
+    "section": "general",
+    "key": "ffm"
+  },
+  {
+    "type": "options",
+    "title": "Video Format",
+    "desc": "The file type of the video",
+    "section": "format",
+    "key": "videof",
+    "options": ["avi", "flv", "mkv", "mov", "mp4", "webm"]
   }
 ]

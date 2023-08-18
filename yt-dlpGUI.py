@@ -26,6 +26,9 @@ from kivy.uix.settings import SettingsWithSpinner, Settings, SettingsWithSidebar
 from kivy.uix.textinput import TextInput
 # from kivy.uix.widget import Widget
 # from yt_dlp import YoutubeDL
+import static_ffmpeg
+from static_ffmpeg import run
+
 Window.clearcolor = (0.05, 0.05, 0.07, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
@@ -76,7 +79,7 @@ class ytdlpgui(App):
         return self.layout
     def open_settings(self, instance):
         settings_panel = CustomSettings()  # Create an instance of your custom settings panel
-        settings_panel.bind(on_close=lambda dt: self.layout.remove_widget(settings_panel))
+        settings_panel.bind(on_close=lambda dt: (settings_panel.config.write(),self.layout.remove_widget(settings_panel)))
         self.layout.add_widget(settings_panel)
     # def setup_logger(self):
     #     log_handler = self.LogHandler(self.consolelog)
@@ -92,17 +95,63 @@ class ytdlpgui(App):
         Animation(value=0,duration=.36).start(self.progress_bar)
         text_input = self.url_input # Access the TextInput widget by its ID
         url = text_input.text
+        if (url=='ffm'):
+            os.system("static_ffmpeg -version")
+            os.system("static_ffprobe -version")
+            self.addtolog('Installing/Installed ffmpeg and ffprobe')
+            return None
         if (url==''):
             self.addtolog('Don\'t try fooling me like that. At least provide a URL!')
             return None
         print("Now downloading ", url)
         self.consolelog.text=''
+        ffmpeg, ffprobe = run.get_or_fetch_platform_executables_else_raise()
+        print(ffmpeg)
+        print(ffprobe)
         def dlthread():
+            config = ConfigParser()
+            config.read('ytdlp_settings.ini')
+            extension = config.get('format','videof')
             ydl_opts = {
-                'logger': self.LogHandler(self.consolelog),
+                'logger': self.LogHandler(self.consolelog,url),
                 'progress_hooks': [self.progress_hook],
+                'writesubtitles': config.getboolean('general', 'subtitle'),
+                # 'embed_thumbnail':config.getboolean('general', 'embed_thmb'),
+                'format':f'bestvideo[ext={extension}]+bestaudio',
+                'postprocessors': [
+                    {
+                        'key': 'FFmpegMetadata',
+                        'add_metadata': True,
+                    },
+                    #     'key': 'EmbedThumbnail',
+                    #     'already_have_thumbnail':
+                    # }
+                ],
                 # 'quiet':True,
             }
+            if config.getboolean('general', 'ffm'):
+                ydl_opts['ffmpeg_location'] = ffmpeg
+            if config.getboolean('general', 'embed_thmb'):
+                ydl_opts['postprocessors'].append({
+                    'key': 'EmbedThumbnail',
+                })
+            if config.getboolean('general', 'subtitle'):
+                ydl_opts['postprocessors'].append({'key': 'FFmpegEmbedSubtitle', 'already_have_subtitle': False})
+            # ydl_opts = {
+            #     'writesubtitles': 'true',
+            #     'subtitleslangs': 'en',
+            #     'merge_output_format': 'mkv',
+            #     'writethumbnail': 'true',
+            #     'postprocessors': [
+            #         {
+            #             'key': 'FFmpegMetadata',
+            #             'add_metadata': True,
+            #         }, {
+            #             'key': 'EmbedThumbnail',
+            #             'already_have_thumbnail': False,
+            #         }
+            #     ],
+            # }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 try:
                     info_dict = ydl.extract_info(url, download=False)
@@ -131,9 +180,10 @@ class ytdlpgui(App):
             completed_text = f"The download of \"{d['filename']}\" has been completed\n"
             self.addtolog(completed_text)
     class LogHandler(logging.Handler):
-        def __init__(self, label):
+        def __init__(self, label,url):
             super().__init__()
             self.label = label
+            self.url = url
         @mainthread
         def emit(self, record):
             msg = self.format(record)
@@ -156,6 +206,9 @@ class ytdlpgui(App):
         def error(self, msg):
             self.label.text += f"{msg}\n"
             print("For the bois that are looking at the log: "+msg)
+            if "--list-formats"in msg:
+                print("Oh wait we could list the formats!")
+                yt_dlp.YoutubeDL().list_formats(self.url)
             Clock.schedule_once(lambda dt: setattr(self.label, 'cursor', (0, 0)),.2)
     @mainthread
     def addtolog(self,msg):
@@ -164,8 +217,10 @@ class CustomSettings(SettingsWithSidebar):
     def __init__(self, **kwargs):
         super(CustomSettings, self).__init__(**kwargs)
         self.config = ConfigParser()
+        self.config.read('ytdlp_settings.ini')  # Specify the correct file path
         self.config.setdefaults('general', {
-            'embed_thmb':False,'age':0})
+            'embed_thmb':False,'subtitle':True,'ffm':False})
+        self.config.setdefaults('format',{'videof':"mp4"})
         self.add_json_panel('General', self.config, 'custom_settings.json')
 # class MainScreen(Screen):
 #     pass
