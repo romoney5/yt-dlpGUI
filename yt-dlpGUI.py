@@ -1,33 +1,51 @@
-import logging
-import random
-import threading
-import time
-import traceback
-import os
+import subprocess
+import sys
+from tkinter import messagebox
 
-import requests
-import yt_dlp.utils
-from kivy import Config, app
-from kivy.animation import Animation
-from kivy.app import App
-from kivy.clock import mainthread, Clock
-from kivy.config import ConfigParser
-from kivy.core.window import Window
-from kivy.lang import Builder
-# from kivy.graphics import Color, Rectangle
-# from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
-from kivy.uix.progressbar import ProgressBar
-from kivy.uix.settings import SettingsWithSpinner, Settings, SettingsWithSidebar
-# from kivy.uix.screenmanager import Screen, ScreenManager
-from kivy.uix.textinput import TextInput
-# from kivy.uix.widget import Widget
-# from yt_dlp import YoutubeDL
-import static_ffmpeg
-from static_ffmpeg import run
+try:
+    import logging
+    import random
+    import threading
+    import time
+    import traceback
+    import os
+
+    import requests
+    import yt_dlp.utils
+    from kivy import Config, app
+    from kivy.animation import Animation
+    from kivy.app import App
+    from kivy.clock import mainthread, Clock
+    from kivy.config import ConfigParser
+    from kivy.core.window import Window
+    from kivy.lang import Builder
+    # from kivy.graphics import Color, Rectangle
+    # from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
+    from kivy.uix.floatlayout import FloatLayout
+    from kivy.uix.label import Label
+    from kivy.uix.popup import Popup
+    from kivy.uix.progressbar import ProgressBar
+    from kivy.uix.settings import SettingsWithSpinner, Settings, SettingsWithSidebar
+    # from kivy.uix.screenmanager import Screen, ScreenManager
+    from kivy.uix.textinput import TextInput
+    # from kivy.uix.widget import Widget
+    # from yt_dlp import YoutubeDL
+    import static_ffmpeg
+    from static_ffmpeg import run
+except ImportError as e:
+    messagebox.showerror("yt-dlpGUI","Whoops! You have to put the CD in your computer "+e.msg)
+    if (e.msg=="No module named 'yt_dlp'"):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
+    if (e.msg=="No module named 'kivy'"):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "kivy"])
+    if (e.msg=="No module named 'static_ffmpeg'"):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "static-ffmpeg"])
+    # messagebox.showerror("yt-dlpGUI",e.msg)
+    print("Whoops! You have to put the CD in your computer")
+    print(f"Restarting!")
+    messagebox.showinfo("yt-dlpGUI","Restarting!")
+    os.execv(sys.executable, ['python'] + sys.argv)
 
 Window.clearcolor = (0.06, 0.06, 0.08, 1)
 Window.size = (900,600)
@@ -40,9 +58,9 @@ class ytdlpgui(App):
             with open("yt-dlpGUI.py", 'wb') as file:
                 file.write(response.content)
             print(f"Downloaded a yt-dlpGUI update successfully")
-
-            # Close the current script
-            app.stopTouchApp()
+            print(f"Restarting!")
+            messagebox.showinfo("yt-dlpGUI","Restarting!")
+            os.execv(sys.executable, ['python'] + sys.argv)
         else:
             print("Failed to download the file")
 
