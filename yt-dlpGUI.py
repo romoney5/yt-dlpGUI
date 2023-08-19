@@ -29,7 +29,7 @@ from kivy.uix.textinput import TextInput
 import static_ffmpeg
 from static_ffmpeg import run
 
-Window.clearcolor = (0.05, 0.05, 0.07, 1)
+Window.clearcolor = (0.06, 0.06, 0.08, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
 class ytdlpgui(App):
@@ -57,10 +57,10 @@ class ytdlpgui(App):
         # nav_bar.add_widget(Widget())
         self.layout.add_widget(nav_bar)
 
-        self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05))
+        self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05),multiline=False)
         download_button = Button(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
         self.progress_bar = ProgressBar(max=100, value=0, pos=(10, 0), size_hint=(.975, .05))
-        self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92})
+        self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92},background_color=(0.1, 0.1, 0.16, 1),foreground_color=(1, 1, 1, 1))
         self.prlabel = Label(size_hint=(.4, .08), pos_hint={'right': .82, 'top': .12},text="0% complete",halign='left',font_size=34-6)
         self.prlabel.bind(size=self.prlabel.setter('text_size'))
         # time.sleep(0.1)
@@ -112,6 +112,8 @@ class ytdlpgui(App):
             config = ConfigParser()
             config.read('ytdlp_settings.ini')
             extension = config.get('format','videof')
+            if extension.startswith("List formats"):
+                extension = "List formats"
             ydl_opts = {
                 'logger': self.LogHandler(self.consolelog,url),
                 'progress_hooks': [self.progress_hook],
@@ -137,6 +139,8 @@ class ytdlpgui(App):
                 })
             if config.getboolean('general', 'subtitle'):
                 ydl_opts['postprocessors'].append({'key': 'FFmpegEmbedSubtitle', 'already_have_subtitle': False})
+            if ((config.get('format', 'videof')== "List formats/Use format ID")&(config.get('format', 'videofid')!= "")):
+                ydl_opts['format'] = config.get('format', 'videofid')
             # ydl_opts = {
             #     'writesubtitles': 'true',
             #     'subtitleslangs': 'en',
@@ -205,10 +209,30 @@ class ytdlpgui(App):
         @mainthread
         def error(self, msg):
             self.label.text += f"{msg}\n"
-            print("For the bois that are looking at the log: "+msg)
-            if "--list-formats"in msg:
-                print("Oh wait we could list the formats!")
-                yt_dlp.YoutubeDL().list_formats(self.url)
+            print("For the bois that are looking at the log: " + msg)
+            if "--list-formats" in msg:
+                self.label.text += "Oh wait we could list the formats!\n"
+
+                # Assume self.url is defined and contains the video URL
+                with yt_dlp.YoutubeDL() as ydl:
+                    info_dict = ydl.extract_info(self.url, download=False)
+                    if 'formats' in info_dict:
+                        self.label.text += "Available formats:\n"
+                    for format in info_dict['formats']:
+                        format_id = format['format_id']
+                        ext = format['ext']
+                        resolution = format.get('resolution', 'N/A')
+
+                        fps = format.get('fps')
+                        if isinstance(fps, (float, int)):
+                            if (isinstance(fps, int)|(str(f"{fps:.3f}")).endswith("000")):
+                                fps = int(fps)
+                            else:
+                                fps = f"{fps:.3f}"
+                        else:
+                            fps = "0"
+
+                        self.label.text += f"ID: {format_id}, EXT: {ext}, RESOLUTION: {resolution}, FPS: {fps}\n"
             Clock.schedule_once(lambda dt: setattr(self.label, 'cursor', (0, 0)),.2)
     @mainthread
     def addtolog(self,msg):
@@ -220,8 +244,45 @@ class CustomSettings(SettingsWithSidebar):
         self.config.read('ytdlp_settings.ini')  # Specify the correct file path
         self.config.setdefaults('general', {
             'embed_thmb':False,'subtitle':True,'ffm':False})
-        self.config.setdefaults('format',{'videof':"mp4"})
-        self.add_json_panel('General', self.config, 'custom_settings.json')
+        self.config.setdefaults('format',{'videof':"mp4",'videofid':""})
+        self.add_json_panel('General', self.config, data="""[
+          {
+            "type": "bool",
+            "title": "Embed Thumbnail",
+            "desc": "Adds the thumbnail. Note this may force the video to be in .mkv",
+            "section": "general",
+            "key": "embed_thmb"
+          },
+          {
+            "type": "bool",
+            "title": "Embed Subtitles",
+            "desc": "Embeds subtitles into the video",
+            "section": "general",
+            "key": "subtitle"
+          },
+          {
+            "type": "bool",
+            "title": "Use FFmpeg",
+            "desc": "Enables use of FFmpeg and FFprobe in yt-dlp. Download ffm to get the required binaries",
+            "section": "general",
+            "key": "ffm"
+          },
+          {
+            "type": "options",
+            "title": "Video Format",
+            "desc": "The file type of the video",
+            "section": "format",
+            "key": "videof",
+            "options": ["avi", "flv", "mkv", "mov", "mp4", "webm", "List formats/Use format ID"]
+          },
+          {
+            "type": "string",
+            "title": "Video Format ID",
+            "desc": "The specific format ID of the video from the List formats option. I won't blame you if you pick 3gp",
+            "section": "format",
+            "key": "videofid"
+          }
+        ]""")
 # class MainScreen(Screen):
 #     pass
 # class SecondScreen(Screen):
