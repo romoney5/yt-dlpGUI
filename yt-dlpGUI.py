@@ -34,6 +34,7 @@ try:
     import static_ffmpeg
     from static_ffmpeg import run
 except ImportError as e:
+    print("Whoops! You have to put the CD in your computer")
     messagebox.showerror("yt-dlpGUI","Whoops! You have to put the CD in your computer "+e.msg)
     if (e.msg=="No module named 'yt_dlp'"):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
@@ -42,7 +43,6 @@ except ImportError as e:
     if (e.msg=="No module named 'static_ffmpeg'"):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "static-ffmpeg"])
     # messagebox.showerror("yt-dlpGUI",e.msg)
-    print("Whoops! You have to put the CD in your computer")
     print(f"Restarting!")
     messagebox.showinfo("yt-dlpGUI","Restarting!")
     os.execv(sys.executable, ['python'] + sys.argv)
