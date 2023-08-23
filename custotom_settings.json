@@ -26,6 +26,13 @@
     "desc": "The file type of the video",
     "section": "format",
     "key": "videof",
-    "options": ["avi", "flv", "mkv", "mov", "mp4", "webm"]
+    "options": ["avi", "flv", "mkv", "mov", "mp4", "webm", "List formats/Use format ID"]
+  },
+  {
+    "type": "string",
+    "title": "Video Format ID",
+    "desc": "The specific format ID of the video from the List formats option. I won't blame you if you pick 3gp",
+    "section": "format",
+    "key": "videofid"
   }
 ]

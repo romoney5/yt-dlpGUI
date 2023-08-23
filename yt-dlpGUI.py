@@ -1,6 +1,10 @@
 import subprocess
 import sys
+from datetime import timedelta
 from tkinter import messagebox
+
+from kivy.uix.filechooser import FileChooserListView
+from kivy.uix.videoplayer import VideoPlayer
 
 try:
     import logging
@@ -32,6 +36,7 @@ try:
     # from kivy.uix.widget import Widget
     # from yt_dlp import YoutubeDL
     import static_ffmpeg
+    import ffpyplayer
     from static_ffmpeg import run
 except ImportError as e:
     print("Whoops! You have to put the CD in your computer")
@@ -42,6 +47,8 @@ except ImportError as e:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "kivy"])
     if (e.msg=="No module named 'static_ffmpeg'"):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "static-ffmpeg"])
+    if (e.msg=="No module named 'ffpyplayer'"):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "ffpyplayer"])
     # messagebox.showerror("yt-dlpGUI",e.msg)
     print(f"Restarting!")
     messagebox.showinfo("yt-dlpGUI","Restarting!")
@@ -70,8 +77,10 @@ class ytdlpgui(App):
         nav_bar = FloatLayout()
         nav_button1 = Button(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05),on_release=self.update_please)
         nav_button2 = Button(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05),on_release=self.open_settings)
+        nav_button3 = Button(text='Multimedia Player', pos=(10, 100), size_hint=(.16, .05),on_release=self.video)
         nav_bar.add_widget(nav_button1)
         nav_bar.add_widget(nav_button2)
+        nav_bar.add_widget(nav_button3)
         # nav_bar.add_widget(Widget())
         self.layout.add_widget(nav_bar)
 
@@ -88,7 +97,11 @@ class ytdlpgui(App):
         # print("It happens")
         # help(YoutubeDL)
         # self.setup_logger()
-
+        self.playeropen = False
+        self.lastpos = 0
+        self.playerposlock = False
+        Window.bind(on_keyboard=self._on_keyboard)
+        self.unlock_trigger = Clock.create_trigger(lambda dt: setattr(self,'playerposlock', False),.3)
         self.layout.add_widget(self.url_input)
         self.layout.add_widget(download_button)
         self.layout.add_widget(self.progress_bar)
@@ -99,6 +112,123 @@ class ytdlpgui(App):
         settings_panel = CustomSettings()  # Create an instance of your custom settings panel
         settings_panel.bind(on_close=lambda dt: (settings_panel.config.write(),self.layout.remove_widget(settings_panel)))
         self.layout.add_widget(settings_panel)
+    def video(self, instance):
+        # Create a FileChooserListView widget
+        self.file_chooser = FileChooserListView()
+
+        # Set the path to the user's home directory as the initial path
+        self.file_chooser.path = os.curdir
+
+        # Filter video files based on extensions
+        self.file_chooser.filters = [lambda folder, filename: filename.endswith((".mp4", ".avi", ".mkv", ".mov",".webm",".mp3",".wav",".ogg"))]
+        self.popup = Popup(title='Open',
+                      content=self.file_chooser,
+                      size_hint=(None, None), size=(700, 500))
+        self.popup.open()
+        # Bind the on_selection event to a callback function
+        self.file_chooser.bind(on_submit=self.openvideo)
+
+        # # Add the FileChooser to the layout
+        # self.add_widget(self.file_chooser)
+
+    def openvideo(self, chooser, selection, *args):
+        self.playeropen = True
+        self.player = VideoPlayer(source=selection[0], state='pause',
+                                  options={'fit_mode': 'contain','eos':'stop'},allow_fullscreen=False)
+        self.popup.dismiss()
+        # self.layout.add_widget(player)
+        self.popup = Popup(title='Multimedia Player',content=self.player,
+                           size_hint=(.9, .8), size=(0, 0))
+        self.popup.open()
+        # popup.open()
+        self.popup.bind(on_dismiss=lambda dt: (setattr(self.player,"state",'stop'),setattr(self,"playeropen",False),self.popup._real_remove_widget()))
+        # self.player.bind(state=self._set_state)
+        # self.player.bind(on_touch_move=self.on_seek)
+        config = ConfigParser()
+        config.read('ytdlp_settings.ini')
+        self.tupdelay = round(config.getint('media','titleint'))
+        # if self.tupdelay < 0:
+        #     self
+        self.player.bind(position=self.on_position_change)
+    def on_position_change(self, instance, value):
+        # print("Position changed:", value)
+        if self.playeropen and not self.playerposlock:
+            if self.tupdelay==0 or Clock.frames%self.tupdelay==0:
+                self.popup.title=f"Multimedia Player ({round(value*60)}/{timedelta(seconds=(round(value)))})"
+            self.lastpos = value
+        else:
+            self.popup.title=f"Multimedia Player ({round(self.lastpos*60)}/{timedelta(seconds=(round(self.lastpos)))})"
+    # def _set_state(self, instance, value):
+    #     # print(value)
+    #     if value=="stop"or value=="pause":
+    #         # self.lastpos = self.player.position
+    #         pass
+#the first time you unpause, the video restarts
+    # def on_seek(self, instance, touch):
+    #     if instance.state == 'play' and instance. .collide_point(*touch.pos):
+    #         # Check if the player is in play state and the touch is within the progress bar
+    #         print("Player is seeking through the progress bar")
+    def _on_keyboard(self,instance, key, scancode, codepoint, modifiers):
+        # print(key)
+        self.playerposlock = True
+        if self.playeropen and key==46:
+            # print("H")
+            frame_rate = 60  # Frames per second
+            # Assuming you have self.player.duration defined
+            frame_duration = 1 / frame_rate  # Duration of one frame in seconds
+
+            # Calculate the percentage for seeking one frame forward
+            seek_percent = frame_duration / self.player.duration
+            self.lastpos = round(self.lastpos*60)/60
+            self.lastpos += frame_duration
+            # Perform the seek operation with the calculated percentage
+            self.player.seek((self.lastpos / self.player.duration))
+        if self.playeropen and key==44:
+            # print("H")
+            frame_rate = 60  # Frames per second
+            # Assuming you have self.player.duration defined
+            frame_duration = 1 / frame_rate  # Duration of one frame in seconds
+
+            # Calculate the percentage for seeking one frame forward
+            seek_percent = frame_duration / self.player.duration
+            self.lastpos = round(self.lastpos*60)/60
+            self.lastpos -= frame_duration
+            # Perform the seek operation with the calculated percentage
+            self.player.seek((self.lastpos / self.player.duration))
+        if self.playeropen and key==276:
+            # print("H")
+            frame_rate = 60  # Frames per second
+            # Assuming you have self.player.duration defined
+            frame_duration = 1 / frame_rate  # Duration of one frame in seconds
+
+            # Calculate the percentage for seeking one frame forward
+            seek_percent = frame_duration / self.player.duration
+            self.lastpos -= frame_duration*(frame_rate*5)
+            # Perform the seek operation with the calculated percentage
+            self.player.seek((self.lastpos / self.player.duration))
+        if self.playeropen and key==275:
+            # print("H")
+            frame_rate = 60  # Frames per second
+            # Assuming you have self.player.duration defined
+            frame_duration = 1 / frame_rate  # Duration of one frame in seconds
+
+            # Calculate the percentage for seeking one frame forward
+            seek_percent = frame_duration / self.player.duration
+            self.lastpos += frame_duration*(frame_rate*5)
+            # Perform the seek operation with the calculated percentage
+            self.player.seek((self.lastpos / self.player.duration))
+        if self.playeropen and key==32:
+            # print("H")
+            if self.player.state=="play":
+                self.player.state="pause"
+            else:
+                self.player.state="play"
+        if self.playeropen and self.player.state=="pause":
+            self.popup.title=f"Multimedia Player ({round(self.lastpos*60)}/{timedelta(seconds=(round(self.lastpos)))})"
+            if self.unlock_trigger.is_triggered:
+                self.unlock_trigger.cancel()
+            self.unlock_trigger()
+        # print(self.lastpos)
     # def setup_logger(self):
     #     log_handler = self.LogHandler(self.consolelog)
     #     ydl_logger = logging.getLogger('yt_dlp')
@@ -157,8 +287,12 @@ class ytdlpgui(App):
                 })
             if config.getboolean('general', 'subtitle'):
                 ydl_opts['postprocessors'].append({'key': 'FFmpegEmbedSubtitle', 'already_have_subtitle': False})
-            if ((config.get('format', 'videof')== "List formats/Use format ID")&(config.get('format', 'videofid')!= "")):
+            if ((config.get('format', 'videof')== "List formats/Use format ID")and(config.get('format', 'videofid')!= "")):
                 ydl_opts['format'] = config.get('format', 'videofid')
+            if ((config.get('logins', 'browserc')== "None/Custom")and(config.get('logins', 'browsercc')!= "")):
+                ydl_opts['cookiesfrombrowser'] = config.get('logins', 'browsercc')
+            if config.get('logins', 'browserc')!= "None/Custom":
+                ydl_opts['cookiesfrombrowser'] = config.get('logins', 'browserc')
             # ydl_opts = {
             #     'writesubtitles': 'true',
             #     'subtitleslangs': 'en',
@@ -263,6 +397,8 @@ class CustomSettings(SettingsWithSidebar):
         self.config.setdefaults('general', {
             'embed_thmb':False,'subtitle':True,'ffm':False})
         self.config.setdefaults('format',{'videof':"mp4",'videofid':""})
+        self.config.setdefaults('media',{'titleint':8})
+        self.config.setdefaults('logins',{'browserc':"None/Custom",'browsercc':""})
         self.add_json_panel('General', self.config, data="""[
           {
             "type": "bool",
@@ -299,6 +435,32 @@ class CustomSettings(SettingsWithSidebar):
             "desc": "The specific format ID of the video from the List formats option. I won't blame you if you pick 3gp",
             "section": "format",
             "key": "videofid"
+          }
+        ]""")
+        self.add_json_panel('Multimedia', self.config, data="""[
+          {
+            "type": "numeric",
+            "title": "Title Update Interval",
+            "desc": "How long in frames it takes for the title to update. -1 disables the feature",
+            "section": "media",
+            "key": "titleint"
+          }
+        ]""")
+        self.add_json_panel('Logins', self.config, data="""[
+          {
+            "type": "options",
+            "title": "Browser Cookies",
+            "desc": "Selecting a browser can get the video based on your cookies, useful for age-locked or sign-in only stuff",
+            "section": "logins",
+            "key": "browserc",
+            "options": ["chrome", "chromium", "brave", "firefox", "opera", "vivaldi", "None/Custom"]
+          },
+          {
+            "type": "string",
+            "title": "Browser Cookies path",
+            "desc": "In case you don't have any of the browsers above. Chromium-based browsers are on /User Data, Firefox on /Profiles",
+            "section": "logins",
+            "key": "browsercc"
           }
         ]""")
 # class MainScreen(Screen):
