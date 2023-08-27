@@ -1,10 +1,10 @@
+import gzip
+import shutil
 import subprocess
 import sys
 from datetime import timedelta
 from tkinter import messagebox
 
-from kivy.uix.filechooser import FileChooserListView
-from kivy.uix.videoplayer import VideoPlayer
 
 try:
     import logging
@@ -34,6 +34,8 @@ try:
     # from kivy.uix.screenmanager import Screen, ScreenManager
     from kivy.uix.textinput import TextInput
     # from kivy.uix.widget import Widget
+    from kivy.uix.filechooser import FileChooserListView
+    from kivy.uix.videoplayer import VideoPlayer
     # from yt_dlp import YoutubeDL
     import static_ffmpeg
     import ffpyplayer
@@ -243,6 +245,10 @@ class ytdlpgui(App):
         Animation(value=0,duration=.36).start(self.progress_bar)
         text_input = self.url_input # Access the TextInput widget by its ID
         url = text_input.text
+        with open('mario.mp4', 'rb') as f_in:
+            with gzip.open('mario.gz', 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            return None
         if (url=='ffm'):
             os.system("static_ffmpeg -version")
             os.system("static_ffprobe -version")
@@ -290,9 +296,10 @@ class ytdlpgui(App):
             if ((config.get('format', 'videof')== "List formats/Use format ID")and(config.get('format', 'videofid')!= "")):
                 ydl_opts['format'] = config.get('format', 'videofid')
             if ((config.get('logins', 'browserc')== "None/Custom")and(config.get('logins', 'browsercc')!= "")):
-                ydl_opts['cookiesfrombrowser'] = config.get('logins', 'browsercc')
+                ydl_opts['cookiesfrombrowser'] = [config.get('logins', 'browsercc')]
             if config.get('logins', 'browserc')!= "None/Custom":
-                ydl_opts['cookiesfrombrowser'] = config.get('logins', 'browserc')
+                ydl_opts['cookiesfrombrowser'] = [config.get('logins', 'browserc')]
+            print(config.get('logins', 'browserc'))
             # ydl_opts = {
             #     'writesubtitles': 'true',
             #     'subtitleslangs': 'en',
@@ -396,7 +403,7 @@ class CustomSettings(SettingsWithSidebar):
         self.config.read('ytdlp_settings.ini')  # Specify the correct file path
         self.config.setdefaults('general', {
             'embed_thmb':False,'subtitle':True,'ffm':False})
-        self.config.setdefaults('format',{'videof':"mp4",'videofid':""})
+        self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'gz':False})
         self.config.setdefaults('media',{'titleint':8})
         self.config.setdefaults('logins',{'browserc':"None/Custom",'browsercc':""})
         self.add_json_panel('General', self.config, data="""[
@@ -435,6 +442,13 @@ class CustomSettings(SettingsWithSidebar):
             "desc": "The specific format ID of the video from the List formats option. I won't blame you if you pick 3gp",
             "section": "format",
             "key": "videofid"
+          },
+          {
+            "type": "bool",
+            "title": "GZIP compression",
+            "desc": "Compress the video vile with GZIP when it's done",
+            "section": "format",
+            "key": "gz"
           }
         ]""")
         self.add_json_panel('Multimedia', self.config, data="""[
