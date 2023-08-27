@@ -102,6 +102,7 @@ class ytdlpgui(App):
         self.playeropen = False
         self.lastpos = 0
         self.playerposlock = False
+        self.config = ConfigParser()
         Window.bind(on_keyboard=self._on_keyboard)
         self.unlock_trigger = Clock.create_trigger(lambda dt: setattr(self,'playerposlock', False),.3)
         self.layout.add_widget(self.url_input)
@@ -146,9 +147,9 @@ class ytdlpgui(App):
         self.popup.bind(on_dismiss=lambda dt: (setattr(self.player,"state",'stop'),setattr(self,"playeropen",False),self.popup._real_remove_widget()))
         # self.player.bind(state=self._set_state)
         # self.player.bind(on_touch_move=self.on_seek)
-        config = ConfigParser()
-        config.read('ytdlp_settings.ini')
-        self.tupdelay = round(config.getint('media','titleint'))
+        self.config = ConfigParser()
+        self.config.read('ytdlp_settings.ini')
+        self.tupdelay = round(self.config.getint('media','titleint'))
         # if self.tupdelay < 0:
         #     self
         self.player.bind(position=self.on_position_change)
@@ -245,10 +246,6 @@ class ytdlpgui(App):
         Animation(value=0,duration=.36).start(self.progress_bar)
         text_input = self.url_input # Access the TextInput widget by its ID
         url = text_input.text
-        with open('mario.mp4', 'rb') as f_in:
-            with gzip.open('mario.gz', 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-            return None
         if (url=='ffm'):
             os.system("static_ffmpeg -version")
             os.system("static_ffprobe -version")
@@ -263,15 +260,14 @@ class ytdlpgui(App):
         print(ffmpeg)
         print(ffprobe)
         def dlthread():
-            config = ConfigParser()
-            config.read('ytdlp_settings.ini')
-            extension = config.get('format','videof')
+            self.config.read('ytdlp_settings.ini')
+            extension = self.config.get('format','videof')
             if extension.startswith("List formats"):
                 extension = "List formats"
             ydl_opts = {
-                'logger': self.LogHandler(self.consolelog,url),
+                'logger': self.LogHandler(self.consolelog,url,self.config.getboolean('format','gz')),
                 'progress_hooks': [self.progress_hook],
-                'writesubtitles': config.getboolean('general', 'subtitle'),
+                'writesubtitles': self.config.getboolean('general', 'subtitle'),
                 # 'embed_thumbnail':config.getboolean('general', 'embed_thmb'),
                 'format':f'bestvideo[ext={extension}]+bestaudio',
                 'postprocessors': [
@@ -285,21 +281,21 @@ class ytdlpgui(App):
                 ],
                 # 'quiet':True,
             }
-            if config.getboolean('general', 'ffm'):
+            if self.config.getboolean('general', 'ffm'):
                 ydl_opts['ffmpeg_location'] = ffmpeg
-            if config.getboolean('general', 'embed_thmb'):
+            if self.config.getboolean('general', 'embed_thmb'):
                 ydl_opts['postprocessors'].append({
                     'key': 'EmbedThumbnail',
                 })
-            if config.getboolean('general', 'subtitle'):
+            if self.config.getboolean('general', 'subtitle'):
                 ydl_opts['postprocessors'].append({'key': 'FFmpegEmbedSubtitle', 'already_have_subtitle': False})
-            if ((config.get('format', 'videof')== "List formats/Use format ID")and(config.get('format', 'videofid')!= "")):
-                ydl_opts['format'] = config.get('format', 'videofid')
-            if ((config.get('logins', 'browserc')== "None/Custom")and(config.get('logins', 'browsercc')!= "")):
-                ydl_opts['cookiesfrombrowser'] = [config.get('logins', 'browsercc')]
-            if config.get('logins', 'browserc')!= "None/Custom":
-                ydl_opts['cookiesfrombrowser'] = [config.get('logins', 'browserc')]
-            print(config.get('logins', 'browserc'))
+            if ((self.config.get('format', 'videof')== "List formats/Use format ID")and(self.config.get('format', 'videofid')!= "")):
+                ydl_opts['format'] = self.config.get('format', 'videofid')
+            if ((self.config.get('logins', 'browserc')== "None/Custom")and(self.config.get('logins', 'browsercc')!= "")):
+                ydl_opts['cookiesfrombrowser'] = [self.config.get('logins', 'browsercc')]
+            if self.config.get('logins', 'browserc')!= "None/Custom":
+                ydl_opts['cookiesfrombrowser'] = [self.config.get('logins', 'browserc')]
+            # print(self.config.get('logins', 'browserc'))
             # ydl_opts = {
             #     'writesubtitles': 'true',
             #     'subtitleslangs': 'en',
@@ -333,20 +329,30 @@ class ytdlpgui(App):
 # ℹ️ See "progress_hooks" in help(yt_dlp.YoutubeDL)
     @mainthread
     def progress_hook(self, d):
+        # self.addtolog('h')
         # app.stopTouchApp()
         if d['status'] == 'downloading':
             # progress_text = f"Downloading {d['filename']}: {d['_percent_str']} complete\n"
             # self.addtolog(progress_text)
             Animation(value=int(round(float(d['_percent_str'].rstrip("%")))),duration=.36).start(self.progress_bar)
             self.prlabel.text = d['_percent_str']+" complete"
-        elif d['status'] == 'finished':
+        elif d['status'] == 'finished' and d['info_dict']["__real_download"]:#I figured this out the hard way
             completed_text = f"The download of \"{d['filename']}\" has been completed\n"
             self.addtolog(completed_text)
+            # if self.config.getboolean('format','gz'):
+            #     self.addtolog('Compressing with GZIP..')
+            #     with open(d['filename'], 'rb') as f_in:
+            #         with gzip.open(d['filename']+'.gz', 'wb') as f_out:
+            #             shutil.copyfileobj(f_in, f_out)
+            #     self.addtolog('Compressed to GZIP, removing original..')
+            #     os.remove(d['filename'])
+            #     self.addtolog('Compressed to GZIP and removed original file')
     class LogHandler(logging.Handler):
-        def __init__(self, label,url):
+        def __init__(self, label,url,gz):
             super().__init__()
             self.label = label
             self.url = url
+            self.gz = gz
         @mainthread
         def emit(self, record):
             msg = self.format(record)
@@ -358,6 +364,9 @@ class ytdlpgui(App):
             if msg.startswith('[debug] '):
                 pass
             else:
+                if msg.startswith("[Metadata] "):
+                    thread = threading.Thread(target=self.process_metadata_with_delay, args=(msg,))
+                    thread.start()
                 self.label.text += f"{msg}\n"
         @mainthread
         def info(self, msg):
@@ -393,9 +402,30 @@ class ytdlpgui(App):
 
                         self.label.text += f"ID: {format_id}, EXT: {ext}, RESOLUTION: {resolution}, FPS: {fps}\n"
             Clock.schedule_once(lambda dt: setattr(self.label, 'cursor', (0, 0)),.2)
+        def process_metadata_with_delay(self,line):
+            time.sleep(1)  # Introducing a 1-second delay
+            def process_metadata_line(line2):
+                metadata_text = line2[len("[Metadata] Adding metadata to "):]
+                return metadata_text.strip('"')
+            @mainthread
+            def add(text):
+                self.label.text+=text
+            metadata = process_metadata_line(line)
+            if metadata:
+                # print(metadata)
+                if self.gz:
+                    add('Compressing with GZIP..\n')
+                    with open(metadata, 'rb') as f_in:
+                        with gzip.open(metadata+'.gz', 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+                    add('Compressed to GZIP, removing original..\n')
+                    os.remove(metadata)
+                    add(f'Compressed to GZIP and removed original file {metadata}\n')
+                return metadata
     @mainthread
     def addtolog(self,msg):
         self.consolelog.text += f"{msg}\n"
+
 class CustomSettings(SettingsWithSidebar):
     def __init__(self, **kwargs):
         super(CustomSettings, self).__init__(**kwargs)
@@ -446,7 +476,7 @@ class CustomSettings(SettingsWithSidebar):
           {
             "type": "bool",
             "title": "GZIP compression",
-            "desc": "Compress the video vile with GZIP when it's done",
+            "desc": "Compress the video file with GZIP when it's done",
             "section": "format",
             "key": "gz"
           }
