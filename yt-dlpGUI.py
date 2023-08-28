@@ -1,10 +1,9 @@
-import gzip
-import shutil
+# import gzip
+# import shutil
 import subprocess
 import sys
 from datetime import timedelta
 from tkinter import messagebox
-
 
 try:
     import logging
@@ -25,6 +24,9 @@ try:
     from kivy.lang import Builder
     # from kivy.graphics import Color, Rectangle
     # from kivy.uix.boxlayout import BoxLayout
+    # from kivy.base import runTouchApp
+    from kivy.graphics import Color, Ellipse, Rectangle, RoundedRectangle, BoxShadow
+    from kivy.utils import get_color_from_hex
     from kivy.uix.button import Button
     from kivy.uix.floatlayout import FloatLayout
     from kivy.uix.label import Label
@@ -36,13 +38,15 @@ try:
     # from kivy.uix.widget import Widget
     from kivy.uix.filechooser import FileChooserListView
     from kivy.uix.videoplayer import VideoPlayer
+    from kivy.core.text import LabelBase
     # from yt_dlp import YoutubeDL
     import static_ffmpeg
     import ffpyplayer
     from static_ffmpeg import run
+    import kivy_gradient
 except ImportError as e:
     print("Whoops! You have to put the CD in your computer")
-    messagebox.showerror("yt-dlpGUI","Whoops! You have to put the CD in your computer "+e.msg)
+    messagebox.showerror("yt-dlpGUI","There is a package not installed. Let me install it for you: "+e.msg)
     if (e.msg=="No module named 'yt_dlp'"):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
     if (e.msg=="No module named 'kivy'"):
@@ -51,6 +55,8 @@ except ImportError as e:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "static-ffmpeg"])
     if (e.msg=="No module named 'ffpyplayer'"):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "ffpyplayer"])
+    if (e.msg=="No module named 'kivy_gradient'"):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "kivygradient"])
     # messagebox.showerror("yt-dlpGUI",e.msg)
     print(f"Restarting!")
     messagebox.showinfo("yt-dlpGUI","Restarting!")
@@ -59,6 +65,41 @@ except ImportError as e:
 Window.clearcolor = (0.06, 0.06, 0.08, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
+class CustomButton(Button):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.background_color=(0, 0, 0, 0)
+        self.font_name="segoe"
+        self.col_def = [88 / 255, 88 / 255, 88 / 255, 1]
+        self.col_sel = [50 / 255, 164 / 255, 206*2 / 255, 1]
+        with self.canvas.before:
+            self.col = Color(self.col_def[0],self.col_def[1],self.col_def[2],self.col_def[3])  # Set the color you want
+            radius = 7
+            self.sh = BoxShadow(pos=self.pos, size=self.size, offset=(0, -10), blur_radius=25, spread_radius=(-10, -10), border_radius=(radius, radius, radius, radius))
+            self.button_bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[(radius, radius), (radius, radius), (radius, radius), (radius, radius)], texture=kivy_gradient.Gradient.vertical(get_color_from_hex("FFFFFF"),get_color_from_hex("E0E0E0"),get_color_from_hex("E0E0E0"),get_color_from_hex("E0E0E0")))
+            self.bind(pos=lambda instance, value: self.update_pos(value),
+                                 size=lambda instance, value: self.update_size(value))
+            #                      on_release=lambda instance: setattr(self, 'col', Color()))
+
+    # def update_rect(self, instance, value):
+    #     self.button_bg.pos = instance.pos
+    #     self.button_bg.size = instance.size
+    def update_pos(self, value):
+        self.button_bg.pos = value
+        self.sh.pos = value
+    def update_size(self, value):
+        self.button_bg.size = value
+        self.sh.size = value
+
+    def on_press(self):
+        # Change button background color when clicked
+        Animation(rgba = (self.col_sel[0],self.col_sel[1],self.col_sel[2],self.col_sel[3]), duration=.1).start(self.col)
+        # self.col.  # Change to blue
+    def on_release(self):
+        # Change button background color when clicked
+        Animation(rgba = (self.col_def[0],self.col_def[1],self.col_def[2],self.col_def[3]), duration=.1).start(self.col)
+        # self.col.rgba = (88 / 255, 88 / 255, 88 / 255, 1)  # Change to blue
+
 class ytdlpgui(App):
     def update_please(self,instance):
         # Download the file from the URL
@@ -77,20 +118,20 @@ class ytdlpgui(App):
         self.layout = FloatLayout()
         # Navigation Bar
         nav_bar = FloatLayout()
-        nav_button1 = Button(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05),on_release=self.update_please)
-        nav_button2 = Button(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05),on_release=self.open_settings)
-        nav_button3 = Button(text='Multimedia Player', pos=(10, 100), size_hint=(.16, .05),on_release=self.video)
+        nav_button1 = CustomButton(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05),on_release=self.update_please)
+        nav_button2 = CustomButton(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05),on_release=self.open_settings)
+        nav_button3 = CustomButton(text='Multimedia Player', pos=(10, 100), size_hint=(.16, .05),on_release=self.video)
         nav_bar.add_widget(nav_button1)
         nav_bar.add_widget(nav_button2)
         nav_bar.add_widget(nav_button3)
         # nav_bar.add_widget(Widget())
         self.layout.add_widget(nav_bar)
-
-        self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05),multiline=False)
-        download_button = Button(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
+        LabelBase.register(name="segoe", fn_regular="segoeui.ttf")
+        self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05),multiline=False,font_name="segoe")
+        download_button = CustomButton(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
         self.progress_bar = ProgressBar(max=100, value=0, pos=(10, 0), size_hint=(.975, .05))
-        self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92},background_color=(0.1, 0.1, 0.16, 1),foreground_color=(1, 1, 1, 1))
-        self.prlabel = Label(size_hint=(.4, .08), pos_hint={'right': .82, 'top': .12},text="0% complete",halign='left',font_size=34-6)
+        self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92},background_color=(0.1, 0.1, 0.16, 1),foreground_color=(1, 1, 1, 1),font_name="segoe")
+        self.prlabel = Label(size_hint=(.4, .08), pos_hint={'right': .82, 'top': .12},text="0% complete",halign='left',font_size=34-6,font_name="segoe")
         self.prlabel.bind(size=self.prlabel.setter('text_size'))
         # time.sleep(0.1)
         self.consolelog.text = open("help.txt", "r").read()+"\n"
@@ -265,11 +306,11 @@ class ytdlpgui(App):
             if extension.startswith("List formats"):
                 extension = "List formats"
             ydl_opts = {
-                'logger': self.LogHandler(self.consolelog,url,self.config.getboolean('format','gz')),
+                'logger': self.LogHandler(self.consolelog, url),
                 'progress_hooks': [self.progress_hook],
                 'writesubtitles': self.config.getboolean('general', 'subtitle'),
                 # 'embed_thumbnail':config.getboolean('general', 'embed_thmb'),
-                'format':f'bestvideo[ext={extension}]+bestaudio',
+                'format':f'bestvideo[ext={extension}][height<={self.config.getint("format","hei")}][filesize<{self.config.get("format","maxsize")}]+bestaudio',
                 'postprocessors': [
                     {
                         'key': 'FFmpegMetadata',
@@ -348,11 +389,10 @@ class ytdlpgui(App):
             #     os.remove(d['filename'])
             #     self.addtolog('Compressed to GZIP and removed original file')
     class LogHandler(logging.Handler):
-        def __init__(self, label,url,gz):
+        def __init__(self, label,url):
             super().__init__()
             self.label = label
             self.url = url
-            self.gz = gz
         @mainthread
         def emit(self, record):
             msg = self.format(record)
@@ -364,9 +404,9 @@ class ytdlpgui(App):
             if msg.startswith('[debug] '):
                 pass
             else:
-                if msg.startswith("[Metadata] "):
-                    thread = threading.Thread(target=self.process_metadata_with_delay, args=(msg,))
-                    thread.start()
+                # if msg.startswith("[Metadata] "):
+                #     thread = threading.Thread(target=self.process_metadata_with_delay, args=(msg,))
+                #     thread.start()
                 self.label.text += f"{msg}\n"
         @mainthread
         def info(self, msg):
@@ -402,26 +442,26 @@ class ytdlpgui(App):
 
                         self.label.text += f"ID: {format_id}, EXT: {ext}, RESOLUTION: {resolution}, FPS: {fps}\n"
             Clock.schedule_once(lambda dt: setattr(self.label, 'cursor', (0, 0)),.2)
-        def process_metadata_with_delay(self,line):
-            time.sleep(1)  # Introducing a 1-second delay
-            def process_metadata_line(line2):
-                metadata_text = line2[len("[Metadata] Adding metadata to "):]
-                return metadata_text.strip('"')
-            @mainthread
-            def add(text):
-                self.label.text+=text
-            metadata = process_metadata_line(line)
-            if metadata:
-                # print(metadata)
-                if self.gz:
-                    add('Compressing with GZIP..\n')
-                    with open(metadata, 'rb') as f_in:
-                        with gzip.open(metadata+'.gz', 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-                    add('Compressed to GZIP, removing original..\n')
-                    os.remove(metadata)
-                    add(f'Compressed to GZIP and removed original file {metadata}\n')
-                return metadata
+        # def process_metadata_with_delay(self,line):
+        #     time.sleep(1)  # Introducing a 1-second delay
+        #     def process_metadata_line(line2):
+        #         metadata_text = line2[len("[Metadata] Adding metadata to "):]
+        #         return metadata_text.strip('"')
+        #     @mainthread
+        #     def add(text):
+        #         self.label.text+=text
+        #     metadata = process_metadata_line(line)
+        #     if metadata:
+        #         # print(metadata)
+        #         if self.gz:
+        #             add('Compressing with GZIP..\n')
+        #             with open(metadata, 'rb') as f_in:
+        #                 with gzip.open(metadata+'.gz', 'wb') as f_out:
+        #                     shutil.copyfileobj(f_in, f_out)
+        #             add('Compressed to GZIP, removing original..\n')
+        #             os.remove(metadata)
+        #             add(f'Compressed to GZIP and removed original file {metadata}\n')
+        #         return metadata
     @mainthread
     def addtolog(self,msg):
         self.consolelog.text += f"{msg}\n"
@@ -433,7 +473,7 @@ class CustomSettings(SettingsWithSidebar):
         self.config.read('ytdlp_settings.ini')  # Specify the correct file path
         self.config.setdefaults('general', {
             'embed_thmb':False,'subtitle':True,'ffm':False})
-        self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'gz':False})
+        self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'hei':1080,'maxsize':"1000M"})
         self.config.setdefaults('media',{'titleint':8})
         self.config.setdefaults('logins',{'browserc':"None/Custom",'browsercc':""})
         self.add_json_panel('General', self.config, data="""[
@@ -474,11 +514,18 @@ class CustomSettings(SettingsWithSidebar):
             "key": "videofid"
           },
           {
-            "type": "bool",
-            "title": "GZIP compression",
-            "desc": "Compress the video file with GZIP when it's done",
+            "type": "numeric",
+            "title": "Output height",
+            "desc": "The height of the video (1920x<1080>)",
             "section": "format",
-            "key": "gz"
+            "key": "hei"
+          },
+          {
+            "type": "string",
+            "title": "Max filesize",
+            "desc": "The maximum file size ending with M (MB) or K (KB)",
+            "section": "format",
+            "key": "maxsize"
           }
         ]""")
         self.add_json_panel('Multimedia', self.config, data="""[
@@ -513,3 +560,4 @@ class CustomSettings(SettingsWithSidebar):
 #     pass
 if __name__ == '__main__':
     ytdlpgui().run()
+    # runTouchApp()
