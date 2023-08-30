@@ -44,6 +44,8 @@ try:
     import ffpyplayer
     from static_ffmpeg import run
     import kivy_gradient
+    import pyautogui
+    import pyperclip
 except ImportError as e:
     print("Whoops! You have to put the CD in your computer")
     messagebox.showerror("yt-dlpGUI","There is a package not installed. Let me install it for you: "+e.msg)
@@ -57,6 +59,8 @@ except ImportError as e:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "ffpyplayer"])
     if (e.msg=="No module named 'kivy_gradient'"):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "kivygradient"])
+    if (e.msg=="No module named 'pyautogui'"):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyautogui"])
     # messagebox.showerror("yt-dlpGUI",e.msg)
     print(f"Restarting!")
     messagebox.showinfo("yt-dlpGUI","Restarting!")
@@ -65,6 +69,7 @@ except ImportError as e:
 Window.clearcolor = (0.06, 0.06, 0.08, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
+Config.set('input', 'mouse', 'mouse,disable_multitouch')
 class CustomButton(Button):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -100,7 +105,30 @@ class CustomButton(Button):
         Animation(rgba = (self.col_def[0],self.col_def[1],self.col_def[2],self.col_def[3]), duration=.1).start(self.col)
         # self.col.rgba = (88 / 255, 88 / 255, 88 / 255, 1)  # Change to blue
 
+class RootLayout(FloatLayout):
+    def __init__(self, app, **kwargs):
+        super().__init__(**kwargs)
+        self.app = app  # Store the instance of the main app
+    def on_touch_down(self, touch):
+        if touch.button == 'right':
+            # ydlpg = ytdlpgui()
+            if self.app.download_button.collide_point(touch.pos[0],touch.pos[1]):
+                fl = FloatLayout()
+                popup = Popup(title='Download options',
+                              content=fl,
+                              size_hint=(None, None), size=(700, 500))
+                button1 = CustomButton(text='Download', pos_hint={'right': .88, 'top': .98}, size_hint=(.76, .1), on_release=self.app.download)
+                button1.bind(on_release=popup.dismiss)
+                button2 = CustomButton(text='Download from Browser Tab', pos_hint={'right': .88, 'top': .83}, size_hint=(.76, .1), on_release=self.app.dlcl)
+                button2.bind(on_release=popup.dismiss)
+                fl.add_widget(button1)
+                fl.add_widget(button2)
+                fl.add_widget(Label(size_hint=(.1, .08), pos_hint={'right': .08, 'top': .08},text="Ver. a2.0.0",halign='left',font_size=10,font_name="segoe"))
+                popup.open()
+            return True
+        super().on_touch_down(touch)
 class ytdlpgui(App):
+    download_button = None
     def update_please(self,instance):
         # Download the file from the URL
         response = requests.get("https://github.com/romoney5/yt-dlpGUI/raw/master/yt-dlpGUI.py")
@@ -113,13 +141,24 @@ class ytdlpgui(App):
             os.execv(sys.executable, ['python'] + sys.argv)
         else:
             print("Failed to download the file")
+    def dlcl(self,instance):
+        Window.hide()
+        pyautogui.hotkey('alt','tab')
+        pyautogui.press('f6')
+        # time.sleep(.1)
+        pyautogui.hotkey('ctrl','c')
+        # time.sleep(.1)
+        self.url = pyperclip.paste()
+        pyautogui.press('esc')
+        Window.show()
+        self.download()
 
     def build(self):
-        self.layout = FloatLayout()
+        self.layout = RootLayout(app=self)
         # Navigation Bar
-        nav_bar = FloatLayout()
-        nav_button1 = CustomButton(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.48, .05),on_release=self.update_please)
-        nav_button2 = CustomButton(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.48, .05),on_release=self.open_settings)
+        nav_bar = RootLayout(app=self)
+        nav_button1 = CustomButton(text='Update', pos_hint={'right': 0.5, 'top': .98}, size_hint=(.46, .05),on_release=self.update_please)
+        nav_button2 = CustomButton(text='Settings', pos_hint={'right': .98, 'top': .98}, size_hint=(.46, .05),on_release=self.open_settings)
         nav_button3 = CustomButton(text='Multimedia Player', pos=(10, 100), size_hint=(.16, .05),on_release=self.video)
         nav_bar.add_widget(nav_button1)
         nav_bar.add_widget(nav_button2)
@@ -128,7 +167,8 @@ class ytdlpgui(App):
         self.layout.add_widget(nav_bar)
         LabelBase.register(name="segoe", fn_regular="segoeui.ttf")
         self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05),multiline=False,font_name="segoe")
-        download_button = CustomButton(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
+        self.download_button = CustomButton(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
+        ytdlpgui.download_button = self.download_button
         self.progress_bar = ProgressBar(max=100, value=0, pos=(10, 0), size_hint=(.975, .05))
         self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92},background_color=(0.1, 0.1, 0.16, 1),foreground_color=(1, 1, 1, 1),font_name="segoe")
         self.prlabel = Label(size_hint=(.4, .08), pos_hint={'right': .82, 'top': .12},text="0% complete",halign='left',font_size=34-6,font_name="segoe")
@@ -144,10 +184,11 @@ class ytdlpgui(App):
         self.lastpos = 0
         self.playerposlock = False
         self.config = ConfigParser()
+        self.url = None
         Window.bind(on_keyboard=self._on_keyboard)
         self.unlock_trigger = Clock.create_trigger(lambda dt: setattr(self,'playerposlock', False),.3)
         self.layout.add_widget(self.url_input)
-        self.layout.add_widget(download_button)
+        self.layout.add_widget(self.download_button)
         self.layout.add_widget(self.progress_bar)
         self.layout.add_widget(self.consolelog)
         self.layout.add_widget(self.prlabel)
@@ -283,10 +324,14 @@ class ytdlpgui(App):
     #     sm.add_widget(MainScreen(name='main'))
     #     sm.add_widget(SecondScreen(name='second'))
     #     return sm
+
     def download(self,instance=None):
         Animation(value=0,duration=.36).start(self.progress_bar)
         text_input = self.url_input # Access the TextInput widget by its ID
         url = text_input.text
+        if self.url != None:
+            url = self.url
+            self.url = None
         if (url=='ffm'):
             os.system("static_ffmpeg -version")
             os.system("static_ffprobe -version")
