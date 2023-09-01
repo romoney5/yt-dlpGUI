@@ -1,0 +1,44 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+
+      - name: Build executable
+        run: |
+          pyinstaller --onefile yt-dlpGUI.py
+          # Add any additional build steps here
+
+      - name: Create release zip
+        run: |
+          mkdir bin
+          mv dist/yt-dlpGUI bin/
+          cp help.txt bin/
+          zip -r release.zip bin/
+
+      - name: Upload release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./release.zip
+          asset_name: yt-dlpGUI_release.zip
+          asset_content_type: application/zip
