@@ -5,11 +5,13 @@ on:
     inputs:
       build-trigger:
         description: 'Trigger the build'
-        required: true
 
 jobs:
-  build:
+  build_and_release:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
 
     steps:
       - name: Checkout code
@@ -18,7 +20,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.11.5
 
       - name: Install dependencies
         run: |
@@ -29,17 +31,26 @@ jobs:
           pyinstaller --onefile yt-dlpGUI.py
           # Add any additional build steps here
 
-      - name: Create release zip
+      - name: Create Release
+        id: create_release
         run: |
           mkdir bin
           mv dist/yt-dlpGUI bin/
           cp help.txt bin/
           zip -r release.zip bin/
+          echo "::set-output name=upload_url::https://example.com/upload" # Replace with actual URL
 
-      - name: Upload release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./release.zip
-          asset_name: yt-dlpGUI_release.zip
-          asset_content_type: application/zip
+      - name: Get Version
+        id: get_version
+        run: echo "::set-output name=version::1.0.0" # Replace with your actual version retrieval
+
+  download_and_deploy:
+    runs-on: ubuntu-latest
+    needs: build_and_release
+
+    steps:
+      - name: Download Release
+        run: |
+          # Steps to download the release assets using ${{ needs.build_and_release.outputs.upload_url }}
+
+      # Additional deployment steps here
