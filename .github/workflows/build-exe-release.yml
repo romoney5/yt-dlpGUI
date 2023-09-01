@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  # Use a Windows machine
     permissions:
       contents: 'write'
 
@@ -31,13 +31,13 @@ jobs:
           pip install pyinstaller
 
       - name: Build Exe
-        run: pyinstaller --onefile --name yt-dlpGUI yt-dlpGUI.py
+        run: pyinstaller --onefile yt-dlpGUI.py
 
       - name: Create bin folder
         run: mkdir bin
 
       - name: Move exe
-        run: mv dist/yt-dlpGUI bin/
+        run: mv dist/yt-dlpGUI.exe bin/
 
       - name: Zip files
         run: zip -r yt-dlpGUI.zip bin/
