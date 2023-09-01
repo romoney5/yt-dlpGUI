@@ -4,14 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       build-trigger:
-        description: 'Trigger the build'
+        description: 'Build'
 
 jobs:
   build_and_release:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
 
     steps:
       - name: Checkout code
@@ -29,7 +26,6 @@ jobs:
       - name: Build executable
         run: |
           pyinstaller --onefile yt-dlpGUI.py
-          # Add any additional build steps here
 
       - name: Create Release
         id: create_release
@@ -38,17 +34,24 @@ jobs:
           mv dist/yt-dlpGUI bin/
           cp help.txt bin/
           zip -r release.zip bin/
-          echo "::set-output name=upload_url::https://example.com/upload" # Replace with actual URL
 
-      - name: Get Version
-        id: get_version
-        run: echo "::set-output name=version::1.0.0" # Replace with your actual version retrieval
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release.zip
+          asset_name: yt-dlpGUI_release.zip
+          asset_content_type: application/zip
 
-  download_and_deploy:
-    runs-on: ubuntu-latest
+  create_release:
     needs: build_and_release
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Download Release
-        run: |
-          wget ${{ needs.build_and_release.outputs.upload_url }}/release.zip
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: v${{ needs.build_and_release.outputs.version }}
+          release_name: Release v${{ needs.build_and_release.outputs.version }}
+          draft: false
+          prerelease: false
