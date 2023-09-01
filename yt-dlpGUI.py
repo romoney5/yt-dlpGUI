@@ -1,9 +1,11 @@
 # import gzip
 # import shutil
+import re
 import subprocess
 import sys
-from datetime import timedelta
+from datetime import timedelta, datetime
 from tkinter import messagebox
+
 
 try:
     import logging
@@ -29,6 +31,7 @@ try:
     from kivy.utils import get_color_from_hex
     from kivy.uix.button import Button
     from kivy.uix.floatlayout import FloatLayout
+    from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.label import Label
     from kivy.uix.popup import Popup
     from kivy.uix.progressbar import ProgressBar
@@ -46,6 +49,7 @@ try:
     import kivy_gradient
     import pyautogui
     import pyperclip
+    import sys
 except ImportError as e:
     print("Whoops! You have to put the CD in your computer")
     messagebox.showerror("yt-dlpGUI","There is a package not installed. Let me install it for you: "+e.msg)
@@ -65,6 +69,9 @@ except ImportError as e:
     print(f"Restarting!")
     messagebox.showinfo("yt-dlpGUI","Restarting!")
     os.execv(sys.executable, ['python'] + sys.argv)
+if sys.platform=="win32":
+    import ctypes
+    ctypes.windll.user32.ShowWindow( ctypes.windll.kernel32.GetConsoleWindow(), 0 )
 
 Window.clearcolor = (0.06, 0.06, 0.08, 1)
 Window.size = (900,600)
@@ -119,10 +126,13 @@ class RootLayout(FloatLayout):
                               size_hint=(None, None), size=(700, 500))
                 button1 = CustomButton(text='Download', pos_hint={'right': .88, 'top': .98}, size_hint=(.76, .1), on_release=self.app.download)
                 button1.bind(on_release=popup.dismiss)
-                button2 = CustomButton(text='Download from Browser Tab', pos_hint={'right': .88, 'top': .83}, size_hint=(.76, .1), on_release=self.app.dlcl)
+                button2 = CustomButton(text='Download from Clipboard', pos_hint={'right': .88, 'top': .83}, size_hint=(.76, .1), on_release=self.app.dlcl)
                 button2.bind(on_release=popup.dismiss)
+                button3 = CustomButton(text='Download from Browser Tab', pos_hint={'right': .88, 'top': .68}, size_hint=(.76, .1), on_release=self.app.dlbr)
+                button3.bind(on_release=popup.dismiss)
                 fl.add_widget(button1)
                 fl.add_widget(button2)
+                fl.add_widget(button3)
                 fl.add_widget(Label(size_hint=(.1, .08), pos_hint={'right': .08, 'top': .08},text="Ver. a2.0.0",halign='left',font_size=10,font_name="segoe"))
                 popup.open()
             return True
@@ -142,6 +152,9 @@ class ytdlpgui(App):
         else:
             print("Failed to download the file")
     def dlcl(self,instance):
+        self.url = pyperclip.paste()
+        self.download()
+    def dlbr(self,instance):
         Window.hide()
         pyautogui.hotkey('alt','tab')
         pyautogui.press('f6')
@@ -218,15 +231,61 @@ class ytdlpgui(App):
 
     def openvideo(self, chooser, selection, *args):
         self.playeropen = True
+        floa = FloatLayout()
+        box = BoxLayout()
         self.player = VideoPlayer(source=selection[0], state='pause',
-                                  options={'fit_mode': 'contain','eos':'stop'},allow_fullscreen=False)
+                                  options={'fit_mode': 'contain','eos':'stop'},allow_fullscreen=False,size_hint=(.9, .8))
         self.popup.dismiss()
-        # self.layout.add_widget(player)
-        self.popup = Popup(title='Multimedia Player',content=self.player,
+        box.add_widget(floa)
+        box.add_widget(self.player)
+        self.popup = Popup(title='Multimedia Player',content=box,
                            size_hint=(.9, .8), size=(0, 0))
         self.popup.open()
         # popup.open()
         self.popup.bind(on_dismiss=lambda dt: (setattr(self.player,"state",'stop'),setattr(self,"playeropen",False),self.popup._real_remove_widget()))
+        try:
+            o = subprocess.check_output(["static_ffprobe", selection[0]], stderr=subprocess.STDOUT, shell=True, text=True)
+            print(o)
+            # Define a pattern to match metadata lines
+            metadata_pattern = re.compile(r'\s+(\w+)\s+: (.+?)(?=\n\s+\w+\s+:|\Z)', re.DOTALL)
+
+            # Create a dictionary to store metadata
+            metadata = {}
+
+            # Extract metadata using regular expression
+            for match in metadata_pattern.finditer(o):
+                key = match.group(1)
+                value = match.group(2)
+                if key not in metadata:
+                    metadata[key] = value.strip()
+            title = "No video name"
+            url = "No URL"
+            channel = "No channel"
+            date = "20000101"
+            desc = "No description"
+            # Print extracted metadata
+            for key, value in metadata.items():
+                key = str.upper(key)
+                if key == "TITLE":
+                    title = value
+                if key == "PURL":
+                    url = value
+                if key == "ARTIST":
+                    channel = value
+                if key == "DATE":
+                    date = value
+                if key == "DESCRIPTION":
+                    desc = value
+                # print(key, ":", value)
+                # self.addtolog(key+","+value)
+            self.addtolog(title)
+            self.addtolog(url)
+            self.addtolog(channel)
+            self.addtolog(datetime.strptime(date, "%Y%m%d").strftime("%b %d, %Y"))
+            self.addtolog('\n'.join([line[0:] if i == 0 else line[22:] for i, line in enumerate(desc.split('\n'))]))
+            # print('\n'.join([line.strip()[2:] for line in desc.split('\n') if line.strip()]))
+        except Exception as e:
+            self.addtolog("Could not decode video metadata")
         # self.player.bind(state=self._set_state)
         # self.player.bind(on_touch_move=self.on_seek)
         self.config = ConfigParser()
@@ -354,6 +413,8 @@ class ytdlpgui(App):
                 'logger': self.LogHandler(self.consolelog, url),
                 'progress_hooks': [self.progress_hook],
                 'writesubtitles': self.config.getboolean('general', 'subtitle'),
+                'getcomments': self.config.getboolean('format', 'dlcom'),
+                'writeinfojson': self.config.getboolean('format', 'dlcom'),
                 # 'embed_thumbnail':config.getboolean('general', 'embed_thmb'),
                 'format':f'bestvideo[ext={extension}][height<={self.config.getint("format","hei")}][filesize<{self.config.get("format","maxsize")}]+bestaudio',
                 'postprocessors': [
@@ -518,7 +579,7 @@ class CustomSettings(SettingsWithSidebar):
         self.config.read('ytdlp_settings.ini')  # Specify the correct file path
         self.config.setdefaults('general', {
             'embed_thmb':False,'subtitle':True,'ffm':False})
-        self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'hei':1080,'maxsize':"1000M"})
+        self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'hei':1080,'maxsize':"1000M","dlcom":False})
         self.config.setdefaults('media',{'titleint':8})
         self.config.setdefaults('logins',{'browserc':"None/Custom",'browsercc':""})
         self.add_json_panel('General', self.config, data="""[
@@ -571,6 +632,13 @@ class CustomSettings(SettingsWithSidebar):
             "desc": "The maximum file size ending with M (MB) or K (KB)",
             "section": "format",
             "key": "maxsize"
+          },
+          {
+            "type": "bool",
+            "title": "Download comments",
+            "desc": "Downloads all the comments for the most archival!",
+            "section": "format",
+            "key": "dlcom"
           }
         ]""")
         self.add_json_panel('Multimedia', self.config, data="""[
