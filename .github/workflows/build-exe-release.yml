@@ -3,8 +3,12 @@ name: Build and Release
 on:
   workflow_dispatch:
     inputs:
-      build-trigger:
-        description: 'Trigger the build'
+      release_tag:
+        description: 'Tag name for the release'
+        required: true
+      release_name:
+        description: 'Release name'
+        required: true
 
 jobs:
   build:
@@ -30,15 +34,30 @@ jobs:
       - name: Create bin folder
         run: mkdir bin
 
-      - name: Move exe and help.txt
-        run: |
-          mv dist/yt-dlpGUI bin/
+      - name: Move exe
+        run: mv dist/yt-dlpGUI bin/
 
       - name: Zip files
         run: zip -r yt-dlpGUI.zip bin/
 
-      - name: Upload to release
-        uses: actions/upload-artifact@v2
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: yt-dlpGUI
-          path: yt-dlpGUI.zip
+          tag_name: ${{ github.event.inputs.release_tag }}
+          release_name: ${{ github.event.inputs.release_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./yt-dlpGUI.zip
+          asset_name: yt-dlpGUI.zip
+          asset_content_type: application/zip
