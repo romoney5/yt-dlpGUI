@@ -51,6 +51,4 @@ jobs:
     steps:
       - name: Download Release
         run: |
-          # Steps to download the release assets using ${{ needs.build_and_release.outputs.upload_url }}
-
-      # Additional deployment steps here
+          wget ${{ needs.build_and_release.outputs.upload_url }}/release.zip
