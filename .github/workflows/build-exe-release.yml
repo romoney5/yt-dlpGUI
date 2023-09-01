@@ -37,5 +37,6 @@ jobs:
         with:
           files: ./release.zip
           token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ steps.create_release.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
