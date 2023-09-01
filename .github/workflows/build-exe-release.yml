@@ -31,7 +31,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build Exe
-        run: pyinstaller --onefile yt-dlpGUI.py
+        run: pyinstaller --onefile --name yt-dlpGUI yt-dlpGUI.py
 
       - name: Create bin folder
         run: mkdir bin
