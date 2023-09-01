@@ -30,10 +30,6 @@ jobs:
           python -m pip install -U pip setuptools wheel py2exe
           pip install -U "https://yt-dlp.github.io/Pyinstaller-Builds/x86_64/pyinstaller-5.8.0-py3-none-any.whl" -r requirements.txt
 
-      - name: Prepare
-        run: |
-          python devscripts/update-version.py -c ${{ inputs.channel }} ${{ inputs.version }}
-          python devscripts/make_lazy_extractors.py
 
       - name: Build
         run: |
