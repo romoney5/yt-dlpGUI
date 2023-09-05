@@ -73,7 +73,6 @@ if sys.platform=="win32":
     import ctypes
     ctypes.windll.user32.ShowWindow( ctypes.windll.kernel32.GetConsoleWindow(), 0 )
 
-Window.clearcolor = (0.06, 0.06, 0.08, 1)
 Window.size = (900,600)
 Config.set('kivy','exit_on_escape',0)
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
@@ -82,7 +81,7 @@ class CustomButton(Button):
         super().__init__(**kwargs)
         self.background_color=(0, 0, 0, 0)
         self.font_name="segoe"
-        self.col_def = [88 / 255, 88 / 255, 88 / 255, 1]
+        # self.col_def = [88 / 255, 88 / 255, 88 / 255, 1]
         self.col_sel = [50 / 255, 164 / 255, 206*2 / 255, 1]
         with self.canvas.before:
             self.col = Color(self.col_def[0],self.col_def[1],self.col_def[2],self.col_def[3])  # Set the color you want
@@ -111,7 +110,25 @@ class CustomButton(Button):
         # Change button background color when clicked
         Animation(rgba = (self.col_def[0],self.col_def[1],self.col_def[2],self.col_def[3]), duration=.1).start(self.col)
         # self.col.rgba = (88 / 255, 88 / 255, 88 / 255, 1)  # Change to blue
+class CustomPopup(Popup):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.overlay_color=(0, 0, 0, 0)
+        with Window.canvas:
+            # Rectangle(size_hint=(1, 1),background_color = col)
+            Color(0,0,0,.7)  # Set the color you want
+            self.bg = Rectangle(size=Window.size)
+            Window.bind(size=lambda instance, value: self.update_size(value))
+            #                      on_release=lambda instance: setattr(self, 'col', Color()))
 
+    # def update_rect(self, instance, value):
+    #     self.button_bg.pos = instance.pos
+    #     self.button_bg.size = instance.size
+    def update_size(self, value):
+        self.bg.size = (Window.size[0]*1.5,Window.size[1]*1.5)
+        Clock.schedule_once(lambda dt: setattr(self.bg, 'size',Window.size),0)
+    def on_pre_dismiss(self):
+        Window.canvas.remove(self.bg)
 class RootLayout(FloatLayout):
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
@@ -133,10 +150,17 @@ class RootLayout(FloatLayout):
                 fl.add_widget(button1)
                 fl.add_widget(button2)
                 fl.add_widget(button3)
-                fl.add_widget(Label(size_hint=(.1, .08), pos_hint={'right': .08, 'top': .08},text="Ver. a2.0.0",halign='left',font_size=10,font_name="segoe"))
+                fl.add_widget(Label(size_hint=(.1, .08), pos_hint={'right': .08, 'top': .08},text="Ver. a2.1.0",halign='left',font_size=10,font_name="segoe"))
                 popup.open()
             return True
         super().on_touch_down(touch)
+class WrappedLabel(Label):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(
+            width=lambda *x:
+            self.setter('text_size')(self, (self.width, None)),
+            texture_size=lambda *x: self.setter('height')(self, self.texture_size[1]))
 class ytdlpgui(App):
     download_button = None
     def update_please(self,instance):
@@ -167,6 +191,15 @@ class ytdlpgui(App):
         self.download()
 
     def build(self):
+        self.config.read('ytdlp_settings.ini')
+        self.theme = self.config.get('app','mode')
+        if (self.theme == "Light"):
+            Window.clearcolor = (222/255, 222/255, 229/255, 1)
+            CustomButton.col_def = [88 / 155, 88 / 155, 88 / 155, 1]
+        else:
+            Window.clearcolor = (0.06, 0.06, 0.08, 1)
+            CustomButton.col_def = [88 / 255, 88 / 255, 88 / 255, 1]
+
         self.layout = RootLayout(app=self)
         # Navigation Bar
         nav_bar = RootLayout(app=self)
@@ -178,7 +211,7 @@ class ytdlpgui(App):
         nav_bar.add_widget(nav_button3)
         # nav_bar.add_widget(Widget())
         self.layout.add_widget(nav_bar)
-        LabelBase.register(name="segoe", fn_regular="segoeui.ttf")
+        LabelBase.register(name="segoe", fn_regular="Roboto-Bold.ttf")
         self.url_input = TextInput(hint_text='URL/Arguments', pos=(10, 70), size_hint=(.4, .05),multiline=False,font_name="segoe")
         self.download_button = CustomButton(text='Download video', on_release=self.download, pos=(10, 20), size_hint=(.4, .08))
         ytdlpgui.download_button = self.download_button
@@ -186,8 +219,16 @@ class ytdlpgui(App):
         self.consolelog = TextInput(size_hint=(.8, .74), pos_hint={'right': .98, 'top': .92},background_color=(0.1, 0.1, 0.16, 1),foreground_color=(1, 1, 1, 1),font_name="segoe")
         self.prlabel = Label(size_hint=(.4, .08), pos_hint={'right': .82, 'top': .12},text="0% complete",halign='left',font_size=34-6,font_name="segoe")
         self.prlabel.bind(size=self.prlabel.setter('text_size'))
+        if (self.theme == "Light"):
+            self.prlabel.color = (.2,.2,.2,1)
+            self.consolelog.background_color = (1,1,1,1)
+            self.consolelog.foreground_color = (.2,.2,.2,1)
+        # else:
+        #     Window.clearcolor = (0.06, 0.06, 0.08, 1)
+        #     CustomButton.col_def = [88 / 255, 88 / 255, 88 / 255, 1]
         # time.sleep(0.1)
-        self.consolelog.text = '''Usage: [OPTIONS] URL [URL...]
+        self.consolelog.text = '''This documentation is a placeholder, it may be replaced later.
+Usage: [OPTIONS] URL [URL...]
 
 Options:
   General Options:
@@ -972,9 +1013,6 @@ Options:
 See full documentation at  https://github.com/yt-dlp/yt-dlp#readme'''+"\n"
         self.consolelog.cursor = (0,0)
         Clock.schedule_once(lambda dt: setattr(self.consolelog, 'cursor', (0, 0)),.5)
-        # print("It happens")
-        # help(YoutubeDL)
-        # self.setup_logger()
         self.playeropen = False
         self.lastpos = 0
         self.playerposlock = False
@@ -1004,27 +1042,41 @@ See full documentation at  https://github.com/yt-dlp/yt-dlp#readme'''+"\n"
         self.popup = Popup(title='Open',
                            content=self.file_chooser,
                            size_hint=(None, None), size=(700, 500))
+        if self.theme == "Light":
+            self.popup.background = ""
+            self.popup.background_color = (.3,.3,.3,1)
         self.popup.open()
         # Bind the on_selection event to a callback function
         self.file_chooser.bind(on_submit=self.openvideo)
 
         # # Add the FileChooser to the layout
         # self.add_widget(self.file_chooser)
-
+    def detailspanel(self,instance):
+        if self.dta.text == ">":
+            self.dta.text = "<"
+            Window.size = (1200,600)
+            self.floa.size_hint = (.4, 1)
+            self.floa.add_widget(self.dta_title)
+            self.floa.add_widget(self.dta_desc)
+            self.dta.size_hint=(.15, .1)
+            self.dta.pos_hint={'right': .15, 'top': .5}
+            # Window._set_size([1200,600])
+        elif self.dta.text == "<":
+            self.dta.text = ">"
+            Window.size = (900,600)
+            self.floa.size_hint = (.08, 1)
+            self.floa.remove_widget(self.dta_title)
+            self.floa.remove_widget(self.dta_desc)
+            self.dta.size_hint=(.75, .1)
+            self.dta.pos_hint={'right': .75, 'top': .5}
+            # self.popup._align_center()
     def openvideo(self, chooser, selection, *args):
         self.playeropen = True
-        floa = FloatLayout()
-        box = BoxLayout()
-        self.player = VideoPlayer(source=selection[0], state='pause',
-                                  options={'fit_mode': 'contain','eos':'stop'},allow_fullscreen=False,size_hint=(.9, .8))
-        self.popup.dismiss()
-        box.add_widget(floa)
-        box.add_widget(self.player)
-        self.popup = Popup(title='Multimedia Player',content=box,
-                           size_hint=(.9, .8), size=(0, 0))
-        self.popup.open()
-        # popup.open()
-        self.popup.bind(on_dismiss=lambda dt: (setattr(self.player,"state",'stop'),setattr(self,"playeropen",False),self.popup._real_remove_widget()))
+        title = "No video name"
+        url = "No URL"
+        channel = "No channel"
+        date = "20000101"
+        desc = "No description"
         try:
             o = subprocess.check_output(["static_ffprobe", selection[0]], stderr=subprocess.STDOUT, shell=True, text=True)
             print(o)
@@ -1040,11 +1092,6 @@ See full documentation at  https://github.com/yt-dlp/yt-dlp#readme'''+"\n"
                 value = match.group(2)
                 if key not in metadata:
                     metadata[key] = value.strip()
-            title = "No video name"
-            url = "No URL"
-            channel = "No channel"
-            date = "20000101"
-            desc = "No description"
             # Print extracted metadata
             for key, value in metadata.items():
                 key = str.upper(key)
@@ -1060,14 +1107,37 @@ See full documentation at  https://github.com/yt-dlp/yt-dlp#readme'''+"\n"
                     desc = value
                 # print(key, ":", value)
                 # self.addtolog(key+","+value)
-            self.addtolog(title)
-            self.addtolog(url)
-            self.addtolog(channel)
-            self.addtolog(datetime.strptime(date, "%Y%m%d").strftime("%b %d, %Y"))
-            self.addtolog('\n'.join([line[0:] if i == 0 else line[22:] for i, line in enumerate(desc.split('\n'))]))
+            # self.addtolog(title)
+            # self.addtolog(url)
+            # self.addtolog(channel)
+            # self.addtolog(datetime.strptime(date, "%Y%m%d").strftime("%b %d, %Y"))
+            # self.addtolog('\n'.join([line[0:] if i == 0 else line[22:] for i, line in enumerate(desc.split('\n'))]))
             # print('\n'.join([line.strip()[2:] for line in desc.split('\n') if line.strip()]))
         except Exception as e:
             self.addtolog("Could not decode video metadata")
+        desc_f = '\n'.join([line[0:] if i == 0 else line[22:] for i, line in enumerate(desc.split('\n'))])
+        box = BoxLayout()
+        self.floa = FloatLayout(size_hint=(.08, 1))
+        self.dta = CustomButton(size_hint=(.75, .1),pos_hint={'right': .75, 'top': .5},text=">",on_release=self.detailspanel)
+        self.dta_title = WrappedLabel(size_hint=(.9, .1),pos_hint={'right': .9, 'top': .95},text=title,bold=True)
+        print(desc_f)
+        self.dta_desc = TextInput(size_hint=(.9, .3),pos_hint={'right': .9, 'top': .85},text=desc_f)
+        self.floa.add_widget(self.dta)
+        self.player = VideoPlayer(source=selection[0], state='pause',
+                                  options={'fit_mode': 'contain','eos':'stop'},allow_fullscreen=False,size_hint=(.9,1))
+        self.popup.dismiss()
+        box.add_widget(self.player)
+        self.config.read('ytdlp_settings.ini')
+        if self.config.getboolean('app', 'vinfo'):
+            box.add_widget(self.floa)
+        self.popup = CustomPopup(title='Multimedia Player',content=box,
+                           size_hint=(.9, .8), size=(0, 0))
+        if self.theme == "Light":
+            self.popup.background = ""
+            self.popup.background_color = (.3,.3,.3,1)
+        self.popup.open()
+        # popup.open()
+        self.popup.bind(on_dismiss=lambda dt: (setattr(self.player,"state",'stop'),setattr(self,"playeropen",False),self.popup._real_remove_widget()))
         # self.player.bind(state=self._set_state)
         # self.player.bind(on_touch_move=self.on_seek)
         self.config = ConfigParser()
@@ -1364,6 +1434,7 @@ class CustomSettings(SettingsWithSidebar):
         self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'hei':1080,'maxsize':"1000M","dlcom":False})
         self.config.setdefaults('media',{'titleint':8})
         self.config.setdefaults('logins',{'browserc':"None/Custom",'browsercc':""})
+        self.config.setdefaults('app',{'mode':"Dark",'vinfo':True})
         self.add_json_panel('General', self.config, data="""[
           {
             "type": "bool",
@@ -1411,7 +1482,7 @@ class CustomSettings(SettingsWithSidebar):
           {
             "type": "string",
             "title": "Max filesize",
-            "desc": "The maximum file size ending with M (MB) or K (KB)",
+            "desc": "The maximum file size ending with M (MB) or k (KB)",
             "section": "format",
             "key": "maxsize"
           },
@@ -1436,7 +1507,7 @@ class CustomSettings(SettingsWithSidebar):
           {
             "type": "options",
             "title": "Browser Cookies",
-            "desc": "Selecting a browser can get the video based on your cookies, useful for age-locked or sign-in only stuff",
+            "desc": "Selecting a browser can get the video based on your cookies, useful for age-locked or sign-in only stuff. Won't work for Chromium browsers if open",
             "section": "logins",
             "key": "browserc",
             "options": ["chrome", "chromium", "brave", "firefox", "opera", "vivaldi", "None/Custom"]
@@ -1447,6 +1518,23 @@ class CustomSettings(SettingsWithSidebar):
             "desc": "In case you don't have any of the browsers above. Chromium-based browsers are on /User Data, Firefox on /Profiles",
             "section": "logins",
             "key": "browsercc"
+          }
+        ]""")
+        self.add_json_panel('Appearance', self.config, data="""[
+          {
+            "type": "options",
+            "title": "Theme",
+            "desc": "Choose dark (default) or light theme, needs a restart",
+            "section": "app",
+            "key": "mode",
+            "options": ["Dark","Light"]
+          },
+          {
+            "type": "bool",
+            "title": "Show Video Details button",
+            "desc": "If the multimedia player's details button is visible",
+            "section": "app",
+            "key": "vinfo"
           }
         ]""")
 # class MainScreen(Screen):
