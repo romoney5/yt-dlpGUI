@@ -20,6 +20,5 @@ KivyGradient==0.0.4
 PyAutoGUI==0.9.54
 pyperclip==1.8.2
 requests==2.31.0
-sh==2.0.6
 static-ffmpeg==2.5
 yt-dlp==2023.7.6
