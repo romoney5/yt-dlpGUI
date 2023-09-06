@@ -1312,7 +1312,7 @@ See full documentation at  https://github.com/yt-dlp/yt-dlp#readme'''+"\n"
             # }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 try:
-                    info_dict = ydl.extract_info(url, download=False)
+                    info_dict = yt_dlp.YoutubeDL().extract_info(url, download=False)
                     if info_dict:
                         print("The URL is valid ", url)
                         ydl.download([url])
@@ -1321,7 +1321,11 @@ See full documentation at  https://github.com/yt-dlp/yt-dlp#readme'''+"\n"
                         return False
                 except Exception as e:
                     print("Invalid URL ", url)
-                    self.addtolog(f"Ugh, you got me!! lemme show you:\n{traceback.format_exc()}")
+                    self.config.read('ytdlp_settings.ini')
+                    if self.config.getboolean('debug','stt'):
+                        self.addtolog(f"Ugh, you got me!! lemme show you:\n{traceback.format_exc()}")
+                    else:
+                        self.addtolog("An error occured but stacktraces are off. For debugging purposes, it is recommended to enable it")
                     return False
         threading.Thread(target=dlthread).start()
 
@@ -1435,6 +1439,7 @@ class CustomSettings(SettingsWithSidebar):
         self.config.setdefaults('media',{'titleint':8})
         self.config.setdefaults('logins',{'browserc':"None/Custom",'browsercc':""})
         self.config.setdefaults('app',{'mode':"Dark",'vinfo':True})
+        self.config.setdefaults('debug',{'stt':True})
         self.add_json_panel('General', self.config, data="""[
           {
             "type": "bool",
@@ -1535,6 +1540,15 @@ class CustomSettings(SettingsWithSidebar):
             "desc": "If the multimedia player's details button is visible",
             "section": "app",
             "key": "vinfo"
+          }
+        ]""")
+        self.add_json_panel('Debug', self.config, data="""[
+          {
+            "type": "bool",
+            "title": "Error stacktraces",
+            "desc": "If enabled, stacktraces will appear when an error occurs",
+            "section": "debug",
+            "key": "stt"
           }
         ]""")
 # class MainScreen(Screen):
