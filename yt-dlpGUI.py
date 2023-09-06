@@ -53,18 +53,18 @@ try:
 except ImportError as e:
     print("Whoops! You have to put the CD in your computer")
     messagebox.showerror("yt-dlpGUI","There is a package not installed. Let me install it for you: "+e.msg)
-    if (e.msg=="No module named 'yt_dlp'"):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
-    if (e.msg=="No module named 'kivy'"):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "kivy"])
-    if (e.msg=="No module named 'static_ffmpeg'"):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "static-ffmpeg"])
-    if (e.msg=="No module named 'ffpyplayer'"):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "ffpyplayer"])
-    if (e.msg=="No module named 'kivy_gradient'"):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "kivygradient"])
-    if (e.msg=="No module named 'pyautogui'"):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyautogui"])
+    # if (e.msg=="No module named 'yt_dlp'"):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
+    # if (e.msg=="No module named 'kivy'"):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "kivy"])
+    # if (e.msg=="No module named 'static_ffmpeg'"):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "static-ffmpeg"])
+    # if (e.msg=="No module named 'ffpyplayer'"):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "ffpyplayer"])
+    # if (e.msg=="No module named 'kivy_gradient'"):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "kivygradient"])
+    # if (e.msg=="No module named 'pyautogui'"):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pyautogui"])
     # messagebox.showerror("yt-dlpGUI",e.msg)
     print(f"Restarting!")
     messagebox.showinfo("yt-dlpGUI","Restarting!")
