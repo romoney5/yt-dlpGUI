@@ -686,7 +686,7 @@ class CustomSettings(SettingsWithSidebar):
         self.config.read('ytdlp_settings.ini')  # Specify the correct file path
         self.config.setdefaults('general', {
             'embed_thmb':False,'subtitle':True,'ffm':False})
-        self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'hei':1080,'maxsize':"1000M"})
+        self.config.setdefaults('format',{'videof':"mp4",'videofid':"",'hei':1080,'maxsize':"1000M","audvid":"Both"})
         self.config.setdefaults('arc',{"dlcom":False,"ijson":True})
         self.config.setdefaults('media',{'titleint':8})
         self.config.setdefaults('logins',{'browserc':"None/Custom",'browsercc':""})
@@ -728,6 +728,14 @@ class CustomSettings(SettingsWithSidebar):
             "desc": "The specific format ID of the video from the List formats option. I won't blame you if you pick 3gp",
             "section": "format",
             "key": "videofid"
+          },
+          {
+            "type": "options",
+            "title": "Video Type",
+            "desc": "Download audio, video, or both. This does not yet work",
+            "section": "format",
+            "key": "audvid",
+            "options": ["Audio only", "Video only", "Both"]
           },
           {
             "type": "numeric",
